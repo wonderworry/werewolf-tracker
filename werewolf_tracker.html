@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>狼人杀记牌器</title>
+
+<style>
+body { font-family: Arial; background:#f2f2f2; padding:10px; }
+
+#roleBar {
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+}
+
+.role {
+    background:white;
+    padding:10px;
+    border-radius:10px;
+    min-width:80px;
+    text-align:center;
+    cursor:pointer;
+    position:relative;
+}
+
+.delete {
+    position:absolute;
+    top:2px;
+    right:5px;
+    color:red;
+    cursor:pointer;
+}
+
+.role span {
+    display:block;
+    margin-top:5px;
+    font-size:12px;
+}
+
+#selectPanel { display:none; margin-top:15px; }
+
+.player {
+    width:40px;height:40px;
+    border-radius:50%;
+    margin:5px;
+    border:none;
+    background:#ddd;
+}
+
+.selected { background:#4caf50;color:white; }
+
+#overview { margin-top:20px; }
+
+.circle {
+    width:40px;height:40px;
+    border-radius:50%;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    margin:5px;
+    color:white;
+    position:relative;
+}
+
+.deadMark {
+    position:absolute;
+    bottom:-15px;
+    font-size:12px;
+    color:black;
+}
+
+.wolf { background:red; }
+.god { background:orange; }
+.civil { background:green; }
+
+.modal {
+    position:fixed;
+    bottom:0;
+    left:0;
+    right:0;
+    background:white;
+    padding:15px;
+    border-top:2px solid #ccc;
+    display:none;
+}
+</style>
+</head>
+
+<body>
+
+<h2>身份板块</h2>
+<div id="roleBar"></div>
+
+<input id="newRole" placeholder="新增身份">
+<button onclick="addRole()">添加</button>
+
+<div id="selectPanel">
+<h3 id="currentRole"></h3>
+<div id="players"></div>
+<button onclick="finishSelect()">完成</button>
+</div>
+
+<h2>阵营总览（点击标记死亡）</h2>
+<div id="overview"></div>
+
+<div id="modal" class="modal">
+<h3>选择死亡方式</h3>
+<button onclick="setDeath('刀')">被刀</button>
+<button onclick="setDeath('毒')">被毒</button>
+<button onclick="setDeath('投')">被投</button>
+<button onclick="setDeath(null)">取消</button>
+</div>
+
+<script>
+let roles = {
+    "狼人":[],
+    "预言家":[],
+    "女巫":[],
+    "猎人":[]
+};
+
+let players = [...Array(12)].map((_,i)=>i+1);
+let currentRole = null;
+
+let death = {};
+let currentPlayer = null;
+
+function renderRoles(){
+    let bar=document.getElementById("roleBar");
+    bar.innerHTML="";
+
+    for(let r in roles){
+        let div=document.createElement("div");
+        div.className="role";
+
+        div.innerHTML = `${r}<span>${roles[r].join(",")}</span>`;
+
+        let del=document.createElement("div");
+        del.innerText="×";
+        del.className="delete";
+        del.onclick=(e)=>{
+            e.stopPropagation();
+            delete roles[r];
+            renderRoles();
+            renderOverview();
+        };
+        div.appendChild(del);
+
+        div.onclick=()=>{
+            currentRole=r;
+            openSelect();
+        };
+
+        bar.appendChild(div);
+    }
+}
+
+function openSelect(){
+    document.getElementById("selectPanel").style.display="block";
+    document.getElementById("currentRole").innerText=currentRole;
+
+    let pDiv=document.getElementById("players");
+    pDiv.innerHTML="";
+
+    players.forEach(p=>{
+        let b=document.createElement("button");
+        b.className="player";
+        b.innerText=p;
+
+        if(roles[currentRole].includes(p)) b.classList.add("selected");
+
+        b.onclick=()=>{
+            let i=roles[currentRole].indexOf(p);
+            i>-1?roles[currentRole].splice(i,1):roles[currentRole].push(p);
+            openSelect();
+        };
+
+        pDiv.appendChild(b);
+    });
+}
+
+function finishSelect(){
+    document.getElementById("selectPanel").style.display="none";
+    renderRoles();
+    renderOverview();
+}
+
+function addRole(){
+    let v=document.getElementById("newRole").value.trim();
+    if(v&&!roles[v]){
+        roles[v]=[];
+        document.getElementById("newRole").value="";
+        renderRoles();
+    }
+}
+
+function getCamp(role){
+    if(role.includes("狼")) return "wolf";
+    if(["预言家","女巫","猎人"].includes(role)) return "god";
+    return "civil";
+}
+
+function renderOverview(){
+    let o=document.getElementById("overview");
+    o.innerHTML="";
+
+    let map={};
+
+    for(let r in roles){
+        roles[r].forEach(p=>{
+            map[p]=getCamp(r);
+        });
+    }
+
+    players.forEach(p=>{
+        let div=document.createElement("div");
+        div.className="circle "+(map[p]||"civil");
+        div.innerText=p;
+
+        div.onclick=()=>{
+            currentPlayer=p;
+            document.getElementById("modal").style.display="block";
+        };
+
+        if(death[p]){
+            let mark=document.createElement("div");
+            mark.className="deadMark";
+            mark.innerText="❌"+death[p];
+            div.appendChild(mark);
+        }
+
+        o.appendChild(div);
+    });
+}
+
+function setDeath(type){
+    if(type) death[currentPlayer]=type;
+    else delete death[currentPlayer];
+
+    document.getElementById("modal").style.display="none";
+    renderOverview();
+}
+
+renderRoles();
+renderOverview();
+</script>
+
+</body>
+</html>
